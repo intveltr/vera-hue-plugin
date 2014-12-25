@@ -1,0 +1,813 @@
+<?xml version="1.0"?>
+<implementation>
+  <functions>
+  -- V1.4
+
+  local dkjson = require("hue_json")
+  local http = require("socket.http")
+  local ltn12 = require("ltn12")
+
+  local deviceId = -1
+  local deviceIP = ""
+  local deviceUUID = nil
+  local URL = ""
+  local hueStateJson = { }
+  local hueDebug = false
+  local light_t = {}
+
+  local username = luup.hw_key
+
+  local HADEVICE_SID = "urn:micasaverde-com:serviceId:HaDevice1"
+  local NETWORK_SID = "urn:micasaverde-com:serviceId:ZWaveNetwork1"
+  local DIMMING_SID = "urn:upnp-org:serviceId:Dimming1"
+  local SWITCH_SID = "urn:upnp-org:serviceId:SwitchPower1"
+  local HUB_SID = "urn:intvelt-com:serviceId:HueController1"
+  local COLOR_SID = "urn:intvelt-com:serviceId:HueColors1"
+
+  local color_devices ={["Color light"] = "x", ["Extended color light"] = "x"}
+
+    ---- generic utilities ----
+
+    local function log(text)
+      if (hueDebug) then
+          luup.log("Philips Hue Controller: " .. text)
+      end
+    end
+
+  local function set_status(text)
+    if (deviceId > 0) then
+      luup.variable_set(HUB_SID, "LinkStatus", text, deviceId)
+    end
+  end
+
+  local function toboolean(v)
+        return (type(v) == "string" and v == "true") or (type(v) == "number" and v ~= 0) or (type(v) == "boolean" and v) or (type(v) == "string" and v == "1")
+    end
+
+  local function get_hue_id(dev_id)
+     local k, v
+     for k, v in pairs(light_t) do
+        if (v.dim == dev_id) or (v.ctrl == dev_id) then
+           return v.is_group, tonumber(k:sub(2))
+        end
+     end
+     return nil
+  end
+
+  local function findHue()
+    local udp = assert(socket.udp())
+
+    local ssdpPacketTable = {
+      [1] = "M-SEARCH * HTTP/1.1\r\n",
+      [2] = "HOST:239.255.255.250:1900\r\n",
+      [3] = "MAN:\"ssdp:discover\"\r\n",
+      [4] = "MX:4\r\n",
+--      [5] = "ST:ssdp:all\r\n\r\n"
+      [5] = "ST:urn:schemas-upnp-org:device:Basic:1\r\n\r\n"
+    }
+
+    local ssdpPacket = table.concat(ssdpPacketTable )
+    log(ssdpPacket)
+    assert(udp:sendto(ssdpPacket, "239.255.255.250", 1900))
+
+    udp:settimeout(4)
+
+    local ipAddress
+    local uuid
+    repeat
+      -- Loop over all upnp packets
+      local udpData, msg = udp:receive()
+      log(tostring(udpData))
+
+      if (udpData) then
+        -- Got a packet, see if there's an address in it.
+
+        local address = string.match(udpData,"LOCATION:[%s+]?(http%:%/%/[%w%.%-]+:?[%d?]+[%/%w+]+%.%w+)")
+
+        if (address and string.find(address, "description")) then
+          -- Try and read info from address
+
+          local contents,response=http.request(address)
+          if (response) then response = string.match(response,"[%s+]?%d+") end
+          if (response=="200" and contents) then
+            -- Got some data, lets process
+            local friendlyName = string.match(contents,"friendlyName%>%a+ %a+")
+            uuid = string.match(contents,"uuid%:[%w%-]+")
+            log(tostring(friendlyName) .. "  " .. tostring(uuid))
+
+            if (friendlyName and string.find(friendlyName, "Philips hue")) then
+              if (deviceUUID == nil or deviceUUID == uuid) then
+                -- Also match UUID if defined, in case there are multiple Hue hubs
+                ipAddress = string.match(address,"http%:%/%/([%w%.%-]+)") 
+              end
+            end
+          end
+        end
+      end
+    until (ipAddress ~= nil or udpData == nil)
+
+    if (ipAddress) then
+      log("*** FOUND HUE ***" .. ipAddress)
+      deviceIP = ipAddress
+      deviceUUID = uuid
+      luup.variable_set(HUB_SID, "UUID", uuid, deviceId)
+      luup.attr_set("ip", ipAddress, deviceId)
+      set_status("(Re)discovered a Hue Hub")
+      return true
+    else
+      log("*** HUE NOT FOUND ***")
+      set_status("No Hue Hub discovered; check if your hub is powered up and connected.  Else try specifying an IP address manually")
+      return false
+    end
+  end
+
+  local function link()
+    log("Link to controller at:" .. URL)
+
+    local jsondata = {username = username, devicetype = "VeraTest"}
+    local postdata = json.encode(jsondata)
+    log("Post: " .. postdata)
+    local body, status, headers = http.request(URL, postdata)
+    log("Result:" .. body)
+    local json_response = json.decode(body)
+
+    local error_link = false
+    local error_other = false
+    local error_other_desc = ""
+    for i, line in pairs(json_response) do
+      if (line.error ~= nil) then
+        log(line.error.type)
+        if (line.error.type == 101) then 
+          error_link = true
+        else
+          error_other = true
+          error_other_desc = line.error.description
+        end
+      end
+    end
+    if (error_other) then
+      set_status("An unknown error occurred when linking: " .. error_other_desc)
+    elseif (error_link) then
+      set_status("The Link button on the Hue hub wasn't pressed.  Press the Link button, and then push the Establish Link button above again")
+    else
+      set_status("Hue hub is up and linked")
+      init_hub()
+    end
+  end
+
+  local function device_by_hueid(is_group, hue_id)
+     if (is_group and string.sub(hue_id, 1, 1) == 'c') then
+        return light_t["g" .. string.sub(hue_id, 2)].ctrl
+     elseif (is_group) then
+        return light_t["g" .. hue_id].dim
+     elseif (string.sub(hue_id, 1, 1) == 'c') then
+        return light_t["l" .. string.sub(hue_id, 2)].ctrl
+     else
+        return light_t["l" .. hue_id].dim
+     end
+  end
+
+  local function update_light_vars(is_group, hue_id, on, level, temperature, hue, sat, colormode, reachable)
+    lightdevice = device_by_hueid(is_group, hue_id)
+    colordevice = device_by_hueid(is_group, "c" .. hue_id)
+
+    if (on and reachable) then
+      --level = math.floor(level / 254 * 100)
+      level = math.floor(0.5 + level / 254 * 100) -- use rounding instead of floor
+    else
+      level = 0
+    end
+
+    local current = luup.variable_get(DIMMING_SID, "LoadLevelStatus", lightdevice)
+    if (tonumber(current) ~= level) then
+       local table_prefix = is_group and "g" or "l"
+       if (light_t[table_prefix .. hue_id] ~= nil and light_t[table_prefix .. hue_id].own == true) then
+          luup.variable_set(DIMMING_SID, "LoadLevelStatus", tostring(level), lightdevice)
+       else
+          luup.call_action(DIMMING_SID, "SetLoadLevelTarget", { newLoadlevelTarget = level }, lightdevice)
+       end
+    end
+
+    if (luup.devices[colordevice]) then
+	   if (temperature ~= nil) then
+		  temp = math.floor(100 * (temperature - 154) / (500 - 154))
+	   else
+		  temp = 0
+	   end
+	   luup.variable_set(COLOR_SID, "ColorTemperature", temp, colordevice)
+
+	   if (hue ~= nil) then
+		  h = hue
+	   else
+		  h = 0
+	   end
+	   luup.variable_set(COLOR_SID, "Hue", h, colordevice)
+
+	   if (sat ~= nil) then
+		  s = sat
+	   else
+		  s = 0
+	   end
+	   luup.variable_set(COLOR_SID, "Saturation", s, colordevice)
+
+       local preset = luup.variable_get(COLOR_SID, "CurrentPreset", colordevice)
+	   if (preset == nil) then
+	      luup.variable_set(COLOR_SID, "CurrentPreset", -1, colordevice)
+       end
+    end
+
+
+  end
+
+
+  local function update_lights(json_config)
+    for id, group in pairs(json_config.groups) do
+      if (group ~= nil and group.state ~= nil and group.state.bri ~= nil) then
+        update_light_vars(true, id, group.state.on, group.state.bri, group.state.ct, 0, 0, group.state.colormode, group.state.reachable)
+      end
+    end
+    for id, light in pairs(json_config.lights) do
+      if (light ~= nil and light.state ~= nil and light.state.bri ~= nil) then
+        update_light_vars(false, id, light.state.on, light.state.bri, light.state.ct, 0, 0, light.state.colormode, light.state.reachable)
+      end
+    end
+  end
+
+  function hue_watch(lul_device, lul_service, lul_variable, lul_value_old, lul_value_new)
+     log("Watch triggered for device " ..  lul_device .. " with new value " .. lul_value_new)
+     local k, v
+     for k, v in pairs(light_t) do
+        if (v.dim == lul_device) then
+           -- dim by hue device number
+           light_dim("hue" .. k, lul_value_new)
+        end
+     end
+  end
+  
+  local function create_child_device(rootdev, is_group, id, json)
+      local table_prefix = is_group and "g" or "l"
+      local id_prefix = is_group and "g" or ""
+
+      local device_name = json.name
+      if (device_name == nil or device_name == "") then
+         device_name = "Philips Hue Lamp " .. id
+      end
+
+      local state = is_group and json.action or json.state
+      level = math.floor(state.bri / 254 * 100)
+--	   if (state.reachable == true) then
+      local child = luup.variable_get(HUB_SID, "LightDevice" .. id, deviceId)
+      if (child == nil or child == "") then
+         luup.chdev.append(deviceId, rootdev, id_prefix .. id, device_name, "urn:schemas-upnp-org:device:DimmableLight:1", "D_DimmableLight1.xml", "", "", false, false)
+      else
+         light_t[table_prefix .. id] = { dim = tonumber(child), own = false, is_group = is_group }
+         -- add a watch for the foreign dimmer
+         luup.variable_watch("hue_watch", DIMMING_SID, "LoadLevelStatus", light_t[table_prefix .. id].dim)
+      end
+
+      if (is_group or json.type ~= nil) then -- and state.reachable == true) then
+         if (is_group or color_devices[json.type]) then
+            luup.chdev.append(deviceId, rootdev, id_prefix .. "c" .. id, device_name, "urn:schemas-intvelt-com:device:HueLamp:1", "D_HueLamp1.xml", "", "", false, false)
+            log("  Adding color controller")
+         end
+      end
+
+      -- find the device ids for the lights
+      local k, v
+      if (light_t[table_prefix .. id] == nil) then
+         light_t[table_prefix .. id] = {}
+      end
+      for k, v in pairs(luup.devices) do
+         if (not is_group and v.id == id and v.device_num_parent == deviceId) then
+            light_t[table_prefix .. id].dim = k
+            light_t[table_prefix .. id].own = true
+            light_t[table_prefix .. id].is_group = false
+            -- set model for owned device
+            log ("  Setting device type")
+            if json.type then luup.attr_set("model", json.type, k) end
+         end
+         if (is_group and v.id == "g" .. id and v.device_num_parent == deviceId) then
+            light_t[table_prefix .. id].dim = k
+            light_t[table_prefix .. id].own = true
+            light_t[table_prefix .. id].is_group = true
+            -- set model for owned device
+            log ("  Setting device type")
+            if json.type then luup.attr_set("model", json.type, k) end
+         end
+         if (not is_group and v.id == 'c' .. id) then
+            light_t[table_prefix .. id].ctrl = k
+         end
+         if (is_group and v.id == 'gc' .. id) then
+            light_t[table_prefix .. id].ctrl = k
+         end
+      end
+  end
+
+  local function setup_lights(json_config)
+    -- Create child devices if necessary
+    local rootdev = luup.chdev.start(deviceId)
+    local level
+
+    for id, light in pairs(json_config.lights) do
+      log("  Found light with ID:" .. id)
+
+      create_child_device(rootdev, false, id, light)
+    end
+
+    for id, group in pairs(json_config.groups) do
+      log("  Found group with ID:" .. id)
+      
+      create_child_device(rootdev, true, id, group)
+    end
+
+    luup.chdev.sync(deviceId, rootdev)
+
+    update_lights(json_config)
+  end
+
+  local function get_hue_status(is_group, lamp_nr)
+    local reqUrl = URL .. username
+    if (is_group == false) then
+      reqUrl = reqUrl .. "/lights/" .. lamp_nr
+    elseif (is_group == true) then
+      reqUrl = reqUrl .. "/groups/" .. lamp_nr
+    end
+
+    local body, status, headers = http.request(reqUrl)
+
+    if (status == 200 and body ~= nil) then
+      local json_response = json.decode(body)
+      log("Got JSON on get username: ".. body)
+      if (json_response[1] ~= nil and json_response[1].error ~= nil) then
+        -- No username / linking required
+        if (lamp_nr) then
+          set_status("Comms or code error")
+        else
+          set_status("Device is not linked.  Press the Link button on your Philips Hue hub, then click Establish Link above")
+        end
+        log("Link required")
+        return nil
+      elseif (lamp_nr == nil and json_response.lights ~= nil) then
+        -- Got username, get the rest of the config
+        set_status("Hue hub is up and linked")
+        hueStatusJson = json_response
+        return json_response
+      elseif (lamp_nr ~= nil and json_response) then
+        set_status("Hue hub is up and linked")
+        update_light_vars(is_group, lamp_nr, json_response.state.on, json_response.state.bri, json_response.state.ct, 0, 0, json_response.state.colormode, json_response.state.reachable)
+        return json_response
+      else
+        set_status("Unable to interpret response from the hub")
+        return nil
+      end
+    else
+      log("Error connecting to base")
+      set_status("Error connecting to base")
+      findHue()
+      return nil
+    end
+  end
+
+
+  local function init_hub()
+    if (json == nil) then log(">>> json is nil") end
+
+    -- Configured?
+    if (deviceIP == nil or deviceIP == "") then
+      set_status("Set the IP address of your Hue hub in the Advanced tab")
+      if (findHue()) then
+        set_status("Found a Hue")
+      else
+        return false
+      end
+    end
+
+    set_status("Device IP is set")
+
+    -- Connect, get and check username
+    URL = "http://" .. deviceIP .. "/api/"
+    if (get_hue_status(nil)) then
+      setup_lights(hueStatusJson)
+    end
+
+    -- Set other stuff
+    local pollingEnabled = luup.variable_get(HADEVICE_SID, "PollingEnabled", deviceId)
+    local pollMinDelay = luup.variable_get(HADEVICE_SID, "PollMinDelay", deviceId)
+
+    if (pollMinDelay == nil or pollMinDelay == "") then
+       luup.variable_set(HADEVICE_SID, "PollMinDelay", 60, deviceId)
+    end
+
+    if (pollingEnabled == nil or pollingEnabled == "") then
+      pollingEnabled = luup.variable_get(NETWORK_SID, "PollingEnabled", 1)
+      luup.variable_set(HADEVICE_SID, "PollingEnabled", pollingEnabled, deviceId)
+    end
+
+    log("PollingEnabled=" .. tostring(pollingEnabled) .. ", PollMinDelay=" .. tostring(pollMinDelay) )
+  end
+
+  function send_data(postdata, is_group, hue_id)
+    log("Post: " .. postdata)
+    local len = string.len(postdata)
+
+    local bodyparts = { }
+    local x, status, headers = http.request {
+      url = URL .. username .. (is_group and "/groups/" or "/lights/") .. hue_id .. (is_group and "/action" or "/state"), 
+      headers = {["content-length"] = len},
+      source = ltn12.source.string(postdata),
+      sink = ltn12.sink.table(bodyparts),
+      method = "PUT"
+    }
+    local body = table.concat(bodyparts)
+
+    return body
+  end
+
+    local function send_json_command(json_string, is_group, hue_id)
+    local body = send_data(json_string, is_group, hue_id)
+    if (body) then
+      local json_response = json.decode(body)
+
+      if (json_response == nil or json_response[1] == nil or json_response[1].success == nil) then
+        return false
+      else
+        return true
+      end
+    else
+      findHue()
+      return false
+    end
+  end
+
+  function light_dim(subDeviceId, target)
+    local dimlevel = math.floor(254 * target / 100)
+    local on = true
+    local status = "1"
+    if (target == 0 or target == "0") then 
+      on = false 
+      status = "0"
+    end
+
+    local is_group, hue_id
+    if (string.sub(subDeviceId, 1, 3) == "hue") then
+      hue_id = string.sub(subDeviceId, 4)
+    else
+      log(subDeviceId)
+      is_group, hue_id = get_hue_id(subDeviceId)
+    end
+
+    log('*** DIM device: ' .. tostring(subDeviceId) .. ' value: ' .. tostring(target) .. '  altid:' .. hue_id)
+
+    local jsondata
+    if (on) then
+      jsondata = {bri = dimlevel, on = on}
+    else
+      jsondata = {on = on}
+    end
+    
+    local postdata = json.encode(jsondata)
+
+    if (send_json_command(postdata, is_group, hue_id)) then
+      local table_prefix = is_group and "g" or "l"
+      if (light_t[table_prefix .. hue_id].own == true) then
+         luup.variable_set(DIMMING_SID, "LoadLevelStatus", tostring(target), subDeviceId)
+         luup.variable_set(SWITCH_SID, "Status", status, subDeviceId)
+      end
+      return true
+    else
+      return false
+    end
+  end
+
+  function light_switch(subDeviceId, target)
+    local dimlevel = 100
+    if (target == "0") then dimlevel = 0 end
+
+    return light_dim(subDeviceId, dimlevel)
+  end
+
+  function light_change(subDeviceId, temperature, hue, saturation)
+    local is_group, hue_id = get_hue_id(subDeviceId)
+
+    local json_response = get_hue_status(is_group, hue_id)
+    local json_command = nil
+
+    if (json_response) then
+      if (temperature) then
+        local temp = json_response.state.ct
+
+        if (temperature == "Up") then
+          temp = temp + 25
+          if (temp > 500) then temp = 500 end
+        else
+          temp = temp - 25
+          if (temp &lt; 154) then temp = 154 end
+        end
+
+        log("Change temp: " .. tostring(temp))
+        json_command = {ct = temp}
+
+        temp = math.floor(100 * (temp - 154) / (500 - 154))
+        luup.variable_set(COLOR_SID, "ColorTemperature", temp, subDeviceId)
+      elseif (hue) then
+        local hueval = json_response.state.hue
+
+        if (hue == "Up") then
+          hueval = hueval + 2000
+          if (hueval > 65535) then hueval = 0 end
+        else
+          hueval = hueval - 2000
+          if (hueval &lt; 0) then hueval = 65535 end
+        end
+
+        log("Change hue: " .. tostring(hueval))
+        json_command = {hue = hueval}
+        luup.variable_set(COLOR_SID, "Hue", hue, subDeviceId)
+      elseif (saturation) then
+        local sat = json_response.state.sat
+
+        if (saturation == "Up") then
+          sat = sat + 15
+          if (sat > 254) then sat = 254 end
+        else
+          sat = sat - 15
+          if (sat &lt; 0) then sat = 0 end
+        end
+
+        log("Change sat: " .. tostring(sat))
+        json_command = {sat = sat}
+        luup.variable_set(COLOR_SID, "Saturation", sat, subDeviceId)
+      end
+
+      if (json_command) then
+        local json_string = json.encode(json_command)
+        if (send_json_command(json_string, is_group, hue_id)) then
+          return true
+        else
+          return false
+        end
+      end
+    end
+  end
+
+
+  function light_use_preset(subDeviceId, preset)
+    local is_group, hue_id = get_hue_id(subDeviceId)
+	local dim_device_id = device_by_hueid(is_group, hue_id)
+
+	local do_delay = false
+	if (dim_device_id) then
+		local level = luup.variable_get(DIMMING_SID, "LoadLevelStatus", dim_device_id)
+		local is_on = luup.variable_get(SWITCH_SID, "Status", dim_device_id)
+		if (tonumber(level)==nil) then level = 0 else level = tonumber(level) end
+		if (tonumber(is_on)==nil) then is_on = 0 else is_on = tonumber(is_on) end
+
+		if (level == 0 or is_on == 0) then
+			do_delay = true
+		end
+	end
+
+	if (do_delay) then
+	   light_send_preset(subDeviceId, preset)
+	else
+	   light_send_preset(subDeviceId, preset)
+	end
+  end
+
+
+  function light_send_preset(subDeviceId, preset)
+    local is_group, hue_id = get_hue_id(subDeviceId)
+	local dim_device_id = device_by_hueid(is_group, hue_id)
+
+    log(">>> Device:" .. subDeviceId .. "  Lamp nr:" .. hue_id .. "  To preset:" .. preset)
+    local json_string = luup.variable_get(COLOR_SID, "Preset" .. preset, subDeviceId)
+	local json_off_string = nil;
+
+	if (dim_device_id) then
+		local level = luup.variable_get(DIMMING_SID, "LoadLevelStatus", dim_device_id)
+		local is_on = luup.variable_get(SWITCH_SID, "Status", dim_device_id)
+		if (tonumber(level)==nil) then level = 0 else level = tonumber(level) end
+		if (tonumber(is_on)==nil) then is_on = 0 else is_on = tonumber(is_on) end
+		
+		log("     level:" .. tostring(level) .. "   on:" .. tostring(is_on))
+
+		-- If level = 0 or light is off: set level to 1, else color command won't be accepted
+		if (level == 0 or is_on == 0) then
+			local json_array = json.decode(json_string);
+			json_array.on=true
+			json_array.bri=1
+			json_string=json.encode(json_array)
+			log("    Turn light on:" .. json_string)
+--  		    luup.variable_set(DIMMING_SID, "LoadLevelStatus", "1", dim_device_id)
+--				luup.variable_set(SWITCH_SID, "Status", "1", dim_device_id)
+			json_array = { }
+			json_array.on=false
+			json_array.bri=0
+			json_off_string=json.encode(json_array)
+		end
+	end
+
+    if (send_json_command(json_string, is_group, hue_id)) then
+      luup.variable_set(COLOR_SID, "CurrentPreset", preset, subDeviceId)
+	  if (json_off_string ~= nil) then
+		  send_json_command(json_off_string, is_group, hue_id)
+	  end
+      get_hue_status(is_group, hue_id)
+      return true
+    else
+      return false
+    end
+  end
+
+  function light_store_preset(subDeviceId, preset)
+    local is_group, hue_id = get_hue_id(subDeviceId)
+
+--    local storeBrightness = luup.variable_get(COLOR_SID, "StoreBrightness", subDeviceId)
+    local storeBrightness = ""
+
+    log(">>> Device:" .. subDeviceId .. "  Lamp nr:" .. hue_id .. "  Store preset:" .. preset .. "  Brightness:" .. storeBrightness)
+    
+    local json_response = get_hue_status(is_group, hue_id)
+    if (json_response) then
+      -- Build the json preset
+      local jsondata = nil
+      if (json_response.state.colormode == "ct") then
+        jsondata = {ct = json_response.state.ct}
+      elseif (json_response.state.colormode == "hs") then
+        jsondata = {hue = json_response.state.hue, sat = json_response.state.sat}
+      elseif (json_response.state.colormode == "xy") then
+        jsondata = {xy = json_response.state.xy}
+      end
+
+      if (jsondata) then
+        luup.variable_set(COLOR_SID, "Preset" .. preset, json.encode(jsondata), subDeviceId)
+        log("  Set preset to:" .. json.encode(jsondata))
+      end
+    end
+  end
+
+  function schedule_poll()
+        local pollMinDelay = luup.variable_get(HADEVICE_SID, "PollMinDelay", deviceId)
+
+        luup.call_timer("poll",1, tonumber(pollMinDelay), "")               
+  end
+
+  function poll()
+    local pollingEnabled = luup.variable_get(HADEVICE_SID, "PollingEnabled", deviceId)
+        if (pollingEnabled) then   
+      if (get_hue_status(nil)) then
+        log("*** POLL HUE ***")
+        update_lights(hueStatusJson)
+        set_status("Hue hub is up and linked")
+      end
+    end
+
+    schedule_poll()
+  end
+
+  function startup(lul_device)
+    deviceId = tonumber(lul_device)
+    deviceIP = luup.devices[deviceId].ip
+    deviceUUID = luup.variable_get(HUB_SID, "UUID", deviceId)
+    debug = luup.variable_get(HUB_SID, "debug", deviceId)
+
+    log("Init device:" .. tostring(lul_device) .. "   at IP:" .. tostring(deviceIP) .. "  UUID:" .. tostring(deviceUUID))
+    init_hub()
+    schedule_poll()
+  end
+
+  function processIncoming(data)
+    log("*** Incoming ***:" .. data)
+  end
+
+  </functions>
+  <startup>startup</startup>
+  <incoming>
+    <lua>
+        processIncoming(tostring(lul_data))
+    </lua>
+  </incoming>
+  <actionList>
+    <action>
+      <serviceId>urn:intvelt-com:serviceId:HueController1</serviceId>
+      <name>Link</name>
+      <run>
+    link()
+    return true
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:Dimming1</serviceId>
+      <name>SetLoadLevelTarget</name>
+      <run>
+    return light_dim(lul_device, lul_settings.newLoadlevelTarget)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:upnp-org:serviceId:SwitchPower1</serviceId>
+      <name>SetTarget</name>
+      <run>
+    return light_switch(lul_device, lul_settings.newTargetValue)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:micasaverde-com:serviceId:HaDevice1</serviceId>
+      <name>Poll</name>
+      <run>
+    log("*** POLLED ***")
+    poll()
+    return true
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:intvelt-com:serviceId:HueColors1</serviceId>
+      <name>SetPreset</name>
+      <run>
+    return light_use_preset(lul_device, lul_settings.Preset)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:intvelt-com:serviceId:HueColors1</serviceId>
+      <name>ProgramPreset</name>
+      <run>
+    return light_store_preset(lul_device, lul_settings.Preset)
+--    log(">>> Store:" .. tostring(lul_settings.StoreBrightness))
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:intvelt-com:serviceId:HueColors1</serviceId>
+      <name>ChangeColor</name>
+      <run>
+    log(">>> Change color")
+    return light_change(lul_device, lul_settings.Temperature, lul_settings.Hue, lul_settings.Saturation)
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:intvelt-com:serviceId:HueColors1</serviceId>
+      <name>SetColorTemperature</name>
+      <run>
+    local temp = math.floor(154 + tonumber(lul_settings.newColorTemperature) * (500 - 154) / 100)
+    local is_group, hue_id = get_hue_id(lul_device)
+    local json_command = {ct = temp}
+    local json_string = json.encode(json_command)
+    log(">>> Colortemp:" .. lul_settings.newColorTemperature .. "  for device:" .. lul_device .. "   command:" .. json_string)
+    if (send_json_command(json_string, is_group, hue_id)) then
+      return true
+    else
+      return false
+    end
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:intvelt-com:serviceId:HueColors1</serviceId>
+      <name>SetHue</name>
+      <run>
+    local hue = math.floor(tonumber(lul_settings.newHue) * 65535 / 100)
+    local is_group, hue_id = get_hue_id(lul_device)
+    local json_command = {hue = hue}
+    local json_string = json.encode(json_command)
+    log(">>> Colorhue:" .. lul_settings.newHue .. "  for device:" .. lul_device .. "   command:" .. json_string)
+    if (send_json_command(json_string, is_group, hue_id)) then
+      return true
+    else
+      return false
+    end
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:intvelt-com:serviceId:HueColors1</serviceId>
+      <name>SetSaturation</name>
+      <run>
+    local sat = math.floor(tonumber(lul_settings.newSaturation) * 254 / 100)
+    local is_group, hue_id = get_hue_id(lul_device)
+    local json_command = {sat = sat}
+    local json_string = json.encode(json_command)
+    log(">>> Color sat:" .. lul_settings.newSaturation .. "  for device:" .. lul_device .. "   command:" .. json_string)
+    if (send_json_command(json_string, is_group, hue_id)) then
+      return true
+    else
+      return false
+    end
+      </run>
+    </action>
+    <action>
+      <serviceId>urn:intvelt-com:serviceId:HueColors1</serviceId>
+      <name>SetHueSaturation</name>
+      <run>
+    local sat = math.floor(tonumber(lul_settings.newSaturation) * 254 / 100)
+    local hue = math.floor(tonumber(lul_settings.newHue) * 65535 / 100)
+
+	 local is_group, hue_id = get_hue_id(lul_device)
+
+    local json_command = {hue = hue, sat = sat}
+    local json_string = json.encode(json_command)
+    log(">>> Color sat:" .. lul_settings.newSaturation .. "  hue:" .. lul_settings.newHue .. "  for device:" .. lul_device .. "   command:" .. json_string)
+    if (send_json_command(json_string, is_group, hue_id)) then
+      return true
+    else
+      return false
+    end
+      </run>
+    </action>
+  </actionList>
+</implementation>

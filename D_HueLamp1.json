@@ -1,0 +1,701 @@
+{
+    "flashicon": "icons/Binary_Light.swf",
+    "imgIconBody": "",
+    "imgIconDimmable": "",
+    "imgIconTurnable": "",
+    "imgIconMin": "",
+    "imgIconMax": "",
+    "halloIconsDir": "pics/hallo",
+    "state_icons": [],
+    "x": "2",
+    "y": "4",
+    "iconText": "0",
+    "inScene": "1",
+    "DisplayStatus": {},
+    "doc_url": {
+        "doc_language": 1,
+        "doc_manual": 1,
+        "doc_version": 1,
+        "doc_platform": 0,
+        "doc_page": "lighting_devices"
+    },
+    "ToggleButton": 1,
+    "Tabs": [
+        {
+            "Label": {
+                "lang_tag": "tabname_control",
+                "text": "Control"
+            },
+            "Position": "0",
+            "TabType": "flash",
+            "ControlGroup": [
+                {
+                    "id": "1",
+                    "isSingle": "1",
+                    "scenegroup": "1"
+                }
+            ],
+            "SceneGroup": [
+                {
+                    "id": "1",
+                    "top": "0",
+                    "left": "0",
+                    "x": "2",
+                    "y": "3"
+                }
+            ],
+            "Control": [
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "label",
+                    "top": "0.3",
+                    "left": "0",
+                    "x": 2,
+                    "Label": {
+                        "lang_tag": "txtcolor",
+                        "text": "Color presets"
+                    },
+                    "Display": {
+                        "Top": 20,
+                        "Left": 50,
+                        "Width": 1445,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "top": "1",
+                    "left": "0",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "1"
+                    },
+                    "Display": {
+                        "Top": 50,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "SetPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "1"
+                            }
+                        ]
+                    },
+                    "ControlCode": "preset1"
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "top": "2",
+                    "left": "0",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "2"
+                    },
+                    "Display": {
+                        "Top": 80,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "SetPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "2"
+                            }
+                        ]
+                    },
+                    "ControlCode": "preset2"
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "top": "3",
+                    "left": "0",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "3"
+                    },
+                    "Display": {
+                        "Top": 110,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "SetPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "3"
+                            }
+                        ]
+                    },
+                    "ControlCode": "preset3"
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "top": "1",
+                    "left": "1",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "4"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "SetPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "4"
+                            }
+                        ]
+                    },
+                    "ControlCode": "preset4"
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "top": "2",
+                    "left": "1",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "5"
+                    },
+                    "Display": {
+                        "Top": 170,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "SetPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "5"
+                            }
+                        ]
+                    },
+                    "ControlCode": "preset5"
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "top": "3",
+                    "left": "1",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "6"
+                    },
+                    "Display": {
+                        "Top": 200,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "SetPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "6"
+                            }
+                        ]
+                    },
+                    "ControlCode": "preset6"
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "txtcolor",
+                        "text": "Program preset"
+                    },
+                    "Display": {
+                        "Top": 20,
+                        "Left": 150,
+                        "Width": 1445,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "Set 1"
+                    },
+                    "Display": {
+                        "Top": 50,
+                        "Left": 150,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ProgramPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "1"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_preset1"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "Set 2"
+                    },
+                    "Display": {
+                        "Top": 80,
+                        "Left": 150,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ProgramPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "2"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_preset2"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "Set 3"
+                    },
+                    "Display": {
+                        "Top": 110,
+                        "Left": 150,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ProgramPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "3"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_preset3"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "Set 4"
+                    },
+                    "Display": {
+                        "Top": 140,
+                        "Left": 150,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ProgramPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "4"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_preset4"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "Set 5"
+                    },
+                    "Display": {
+                        "Top": 170,
+                        "Left": 150,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ProgramPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "5"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_preset5"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "Set 6"
+                    },
+                    "Display": {
+                        "Top": 200,
+                        "Left": 150,
+                        "Width": 75,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ProgramPreset",
+                        "Parameters": [
+                            {
+                                "Name": "Preset",
+                                "Value": "6"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_preset6"
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Variable": "Preset1",
+                        "Top": 55,
+                        "Left": 250,
+                        "Width": 300,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Variable": "Preset2",
+                        "Top": 85,
+                        "Left": 250,
+                        "Width": 300,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Variable": "Preset3",
+                        "Top": 115,
+                        "Left": 250,
+                        "Width": 300,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Variable": "Preset4",
+                        "Top": 145,
+                        "Left": 250,
+                        "Width": 300,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Variable": "Preset5",
+                        "Top": 175,
+                        "Left": 250,
+                        "Width": 300,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Variable": "Preset6",
+                        "Top": 205,
+                        "Left": 250,
+                        "Width": 300,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "checkbox",
+                    "Display": {
+                        "Value": 1,
+                        "Top": 17,
+                        "Left": 300,
+                        "Width": 5,
+                        "Height": 5,
+                        "ID": "StoreBrightness"
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "storeBrightness",
+                        "text": "Store brightness with presets"
+                    },
+                    "Display": {
+                        "Top": 20,
+                        "Left": 330,
+                        "Width": 300,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_tempup",
+                        "text": "Up"
+                    },
+                    "Display": {
+                        "Top": 250,
+                        "Left": 70,
+                        "Width": 40,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ChangeColor",
+                        "Parameters": [
+                            {
+                                "Name": "Temperature",
+                                "Value": "Up"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_tempup"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_tempdown",
+                        "text": "Down"
+                    },
+                    "Display": {
+                        "Top": 300,
+                        "Left": 70,
+                        "Width": 40,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ChangeColor",
+                        "Parameters": [
+                            {
+                                "Name": "Temperature",
+                                "Value": "Down"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_tempdown"
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "settemp",
+                        "text": "Color temperature"
+                    },
+                    "Display": {
+                        "Top": 280,
+                        "Left": 40,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_yup",
+                        "text": "Sat +"
+                    },
+                    "Display": {
+                        "Top": 250,
+                        "Left": 230,
+                        "Width": 40,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ChangeColor",
+                        "Parameters": [
+                            {
+                                "Name": "Saturation",
+                                "Value": "Up"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_yup"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_ydown",
+                        "text": "Sat -"
+                    },
+                    "Display": {
+                        "Top": 300,
+                        "Left": 230,
+                        "Width": 40,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ChangeColor",
+                        "Parameters": [
+                            {
+                                "Name": "Saturation",
+                                "Value": "Down"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_ydown"
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "settemp",
+                        "text": "Color"
+                    },
+                    "Display": {
+                        "Top": 280,
+                        "Left": 235,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_xup",
+                        "text": "Hue >"
+                    },
+                    "Display": {
+                        "Top": 275,
+                        "Left": 280,
+                        "Width": 40,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ChangeColor",
+                        "Parameters": [
+                            {
+                                "Name": "Hue",
+                                "Value": "Up"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_xup"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_xdown",
+                        "text": "< Hue"
+                    },
+                    "Display": {
+                        "Top": 275,
+                        "Left": 180,
+                        "Width": 40,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueColors1",
+                        "Action": "ChangeColor",
+                        "Parameters": [
+                            {
+                                "Name": "Hue",
+                                "Value": "Down"
+                            }
+                        ]
+                    },
+                    "ControlCode": "prog_xdown"
+                }
+            ]
+        },
+        {
+            "Label": {
+                "lang_tag": "color",
+                "text": "Color"
+            },
+            "Position": "1",
+            "TabType": "javascript",
+            "ScriptName": "J_HueColors1.js",
+            "Function": "hueColorTab"
+        },
+        {
+            "Label": {
+                "lang_tag": "settings",
+                "text": "Settings"
+            },
+            "Position": "2",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "simple_device"
+        },
+        {
+            "Label": {
+                "lang_tag": "advanced",
+                "text": "Advanced"
+            },
+            "Position": "3",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "advanced_device"
+        },
+        {
+            "Label": {
+                "lang_tag": "logs",
+                "text": "Logs"
+            },
+            "Position": "4",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "device_logs"
+        },
+        {
+            "Label": {
+                "lang_tag": "notifications",
+                "text": "Notifications"
+            },
+            "Position": "5",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "device_notifications"
+        }
+    ],
+    "sceneList": {},
+    "eventList2": [],
+    "DeviceType": "urn:schemas-intvelt-com:device:HueLamp:1",
+    "device_type": "urn:schemas-intvelt-com:device:HueLamp:1"
+}

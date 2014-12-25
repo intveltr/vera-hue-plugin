@@ -1,0 +1,120 @@
+{
+    "flashicon": "icons\/generic_sensor.swf",
+    "imgIconBody": "",
+    "imgIconDimmable": "",
+    "imgIconTurnable": "",
+    "imgIconMin": "",
+    "imgIconMax": "",
+    "halloIconsDir": "pics\/hallo",
+    "inScene": "0",
+    "DisplayStatus": {
+        
+    },
+    "doc_url":{
+        "doc_forced_url":{
+            "text":"http://www.intvelt.com"
+        }
+    },
+    "Tabs": [
+        {
+            "Label": {
+                "lang_tag": "Hue_Controller",
+                "text": "Hue Controller"
+            },
+            "Position": "0",
+            "TabType": "flash",
+            "Control": [
+                {
+                    "ControlGroup": "2",
+                    "ControlHeader": "1",
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "controller_link",
+                        "text": "Link to Hue controller:"
+                    },
+                    "Display": {
+                        "Top": 100,
+                        "Left": 50,
+                        "Width": 200,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlGroup": "2",
+                    "ControlPair": "1",
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_link",
+                        "text": "Establish Link"
+                    },
+                    "Display": {
+                        "Top": 95,
+                        "Left": 180,
+                        "Width": 100,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:intvelt-com:serviceId:HueController1",
+                        "Action": "Link",
+                        "Parameters": [
+                        ]
+                    }
+                },
+                {
+                    "ControlGroup": "2",
+                    "ControlHeader": "1",
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "link_status",
+                        "text": "Link status:"
+                    },
+                    "Display": {
+                        "Top": 150,
+                        "Left": 50,
+                        "Width": 200,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:intvelt-com:serviceId:HueController1",
+                        "Variable": "LinkStatus",
+                        "Top": 170,
+                        "Left": 50,
+                        "Width": 200,
+                        "Height": 20
+                    }
+                },
+            ]
+        },
+        {
+            "Label": {
+                "lang_tag": "settings",
+                "text": "Settings" 
+            },
+            "Position": "1",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "simple_device" 
+        },
+        {
+            "Label": {
+                "lang_tag": "advanced",
+                "text": "Advanced" 
+            },
+            "Position": "2",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "advanced_device" 
+        } 
+    ],
+    "eventList": {
+
+    },
+    "eventList2": [
+
+    ],
+    "DeviceType": "urn:schemas-intvelt-com:device:HueController:1",
+    "device_type": "urn:schemas-intvelt-com:device:HueController:1" 
+}
