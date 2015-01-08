@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <implementation>
   <functions>
-  -- V1.4
+  -- V1.5
 
   local dkjson = require("hue_json")
   local http = require("socket.http")
@@ -254,7 +254,6 @@
       end
 
       local state = is_group and json.action or json.state
-      level = math.floor(state.bri / 254 * 100)
 --	   if (state.reachable == true) then
       local child = luup.variable_get(HUB_SID, "LightDevice" .. id, deviceId)
       if (child == nil or child == "") then
@@ -306,7 +305,6 @@
   local function setup_lights(json_config)
     -- Create child devices if necessary
     local rootdev = luup.chdev.start(deviceId)
-    local level
 
     for id, light in pairs(json_config.lights) do
       log("  Found light with ID:" .. id)
@@ -811,3 +809,4 @@
     </action>
   </actionList>
 </implementation>
+ 
