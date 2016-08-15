@@ -15,8 +15,6 @@
   local hueDebug = false
   local light_t = {}
 
-  local username = luup.hw_key
-
   local HADEVICE_SID = "urn:micasaverde-com:serviceId:HaDevice1"
   local NETWORK_SID = "urn:micasaverde-com:serviceId:ZWaveNetwork1"
   local DIMMING_SID = "urn:upnp-org:serviceId:Dimming1"
@@ -33,6 +31,17 @@
           luup.log("Philips Hue Controller: " .. text)
       end
     end
+  local function get_username()
+    local val = luup.variable_get(HUB_SID, "Username", deviceId)
+    if ( val == nil ) then
+      return ""
+    end
+    return val
+  end
+
+  local function set_username(username)
+     luup.variable_set(HUB_SID, "Username", username, deviceId)
+  end
 
   local function set_status(text)
     if (deviceId > 0) then
@@ -124,7 +133,7 @@
   local function link()
     log("Link to controller at:" .. URL)
 
-    local jsondata = {username = username, devicetype = "VeraTest"}
+    local jsondata = {devicetype = luup.hw_key}
     local postdata = json.encode(jsondata)
     log("Post: " .. postdata)
     local body, status, headers = http.request(URL, postdata)
@@ -134,6 +143,7 @@
     local error_link = false
     local error_other = false
     local error_other_desc = ""
+    local username = ""
     for i, line in pairs(json_response) do
       if (line.error ~= nil) then
         log(line.error.type)
@@ -144,12 +154,18 @@
           error_other_desc = line.error.description
         end
       end
+      if (line.success ~= nil ) then
+        if ( line.success.username ~= nil ) then
+          username = line.success.username
+        end
+      end
     end
     if (error_other) then
       set_status("An unknown error occurred when linking: " .. error_other_desc)
     elseif (error_link) then
       set_status("The Link button on the Hue hub wasn't pressed.  Press the Link button, and then push the Establish Link button above again")
-    else
+    elseif ( username ~= "" ) then
+      set_username(username)
       set_status("Hue hub is up and linked")
       init_hub()
     end
@@ -324,7 +340,7 @@
   end
 
   local function get_hue_status(is_group, lamp_nr)
-    local reqUrl = URL .. username
+    local reqUrl = URL .. get_username()
     if (is_group == false) then
       reqUrl = reqUrl .. "/lights/" .. lamp_nr
     elseif (is_group == true) then
@@ -410,7 +426,7 @@
 
     local bodyparts = { }
     local x, status, headers = http.request {
-      url = URL .. username .. (is_group and "/groups/" or "/lights/") .. hue_id .. (is_group and "/action" or "/state"), 
+      url = URL .. get_username() .. (is_group and "/groups/" or "/lights/") .. hue_id .. (is_group and "/action" or "/state"), 
       headers = {["content-length"] = len},
       source = ltn12.source.string(postdata),
       sink = ltn12.sink.table(bodyparts),
